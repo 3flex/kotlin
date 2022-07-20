@@ -26,9 +26,9 @@ public class SourceMap3Builder implements SourceMapBuilder {
     private final TextOutput textOutput;
     private final String pathPrefix;
 
-    private final TObjectIntHashMap<SourceKey> sources = new TObjectIntHashMap<SourceKey>() {
+    private final TObjectIntHashMap<String> sources = new TObjectIntHashMap<String>() {
         @Override
-        public int get(SourceKey key) {
+        public int get(String key) {
             int index = index(key);
             return index < 0 ? -1 : _values[index];
         }
@@ -107,12 +107,11 @@ public class SourceMap3Builder implements SourceMapBuilder {
         out.insert(0, StringUtil.repeatSymbol(';', count));
     }
 
-    private int getSourceIndex(String source, Object identityObject, Supplier<Reader> contentSupplier) {
-        SourceKey key = new SourceKey(source, identityObject);
-        int sourceIndex = sources.get(key);
+    private int getSourceIndex(String source, Supplier<Reader> contentSupplier) {
+        int sourceIndex = sources.get(source);
         if (sourceIndex == -1) {
             sourceIndex = orderedSources.size();
-            sources.put(key, sourceIndex);
+            sources.put(source, sourceIndex);
             orderedSources.add(source);
             orderedSourceContentSuppliers.add(contentSupplier);
         }
@@ -122,11 +121,11 @@ public class SourceMap3Builder implements SourceMapBuilder {
 
     @Override
     public void addMapping(
-            @NotNull String source, @Nullable Object identityObject, @NotNull Supplier<Reader> sourceContent,
+            @NotNull String source, @NotNull Supplier<Reader> sourceContent,
             int sourceLine, int sourceColumn
     ) {
         source = source.replace(File.separatorChar, '/');
-        int sourceIndex = getSourceIndex(source, identityObject, sourceContent);
+        int sourceIndex = getSourceIndex(source, sourceContent);
 
         if (!currentMappingIsEmpty && previousSourceIndex == sourceIndex && previousSourceLine == sourceLine &&
             previousSourceColumn == sourceColumn) {
@@ -222,36 +221,6 @@ public class SourceMap3Builder implements SourceMapBuilder {
                 out.append(BASE64_MAP[digit]);
             }
             while (value > 0);
-        }
-    }
-
-    static final class SourceKey {
-        private final String sourcePath;
-        private final Object identityKey;
-
-        SourceKey(String sourcePath, Object identityKey) {
-            this.sourcePath = sourcePath;
-            this.identityKey = identityKey;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof SourceKey)) return false;
-
-            SourceKey key = (SourceKey) o;
-
-            if (!sourcePath.equals(key.sourcePath)) return false;
-            if (identityKey != null ? !identityKey.equals(key.identityKey) : key.identityKey != null) return false;
-
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int result = sourcePath.hashCode();
-            result = 31 * result + (identityKey != null ? identityKey.hashCode() : 0);
-            return result;
         }
     }
 }

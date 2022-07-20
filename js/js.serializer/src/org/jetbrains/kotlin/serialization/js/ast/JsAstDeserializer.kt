@@ -120,7 +120,7 @@ class JsAstDeserializer(program: JsProgram, private val sourceRoots: Iterable<Fi
             .firstOrNull { it.exists() }
 
         return if (contentFile != null) {
-            JsLocationWithEmbeddedSource(deserializedLocation, null) { InputStreamReader(FileInputStream(contentFile), "UTF-8") }
+            JsLocationWithEmbeddedSource(deserializedLocation) { InputStreamReader(FileInputStream(contentFile), "UTF-8") }
         } else null
     }
 }
