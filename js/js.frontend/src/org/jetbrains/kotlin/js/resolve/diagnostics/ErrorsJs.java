@@ -112,9 +112,6 @@ public interface ErrorsJs {
 
     DiagnosticFactory1<PsiElement, String> NON_CONSUMABLE_EXPORTED_IDENTIFIER = DiagnosticFactory1.create(WARNING, DEFAULT);
 
-    DiagnosticFactory0<PsiElement> NON_MEMBER_PROPERTY_OPTIONAL = DiagnosticFactory0.create(ERROR, DEFAULT);
-    DiagnosticFactory0<PsiElement> NOT_EXPORTED_OPTIONAL = DiagnosticFactory0.create(WARNING, DEFAULT);
-
     @SuppressWarnings("UnusedDeclaration")
     Object _initializer = new Object() {
         {
