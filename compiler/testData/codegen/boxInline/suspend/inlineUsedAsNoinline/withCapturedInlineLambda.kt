@@ -38,7 +38,7 @@ import kotlin.reflect.jvm.*
 import kotlin.coroutines.*
 import kotlin.coroutines.intrinsics.*
 
-fun addK(x: String): String = x + "X"
+fun addK(x: String): String = x + "K"
 
 var result = ""
 
