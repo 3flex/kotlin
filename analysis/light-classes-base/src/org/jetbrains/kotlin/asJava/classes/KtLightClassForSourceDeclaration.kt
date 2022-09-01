@@ -211,9 +211,9 @@ fun KtClassOrObject.defaultJavaAncestorQualifiedName(): String? {
 }
 
 fun KtClassOrObject.shouldNotBeVisibleAsLightClass(): Boolean {
-
-    if (containingFile is KtCodeFragment) {
-        // Avoid building light classes for code fragments
+    val containingFile = containingFile
+    if (containingFile is KtCodeFragment || containingFile is KtFile && containingFile.isCompiled) {
+        // Avoid building light classes for code fragments and decompiled code
         return true
     }
 
