@@ -23,6 +23,14 @@ sourceSets {
     "test" { projectDefault() }
 }
 
+tasks {
+    val compileKotlin by existing(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class) {
+        kotlinOptions {
+            freeCompilerArgs += "-Xno-new-java-annotation-targets"
+        }
+    }
+}
+
 val generateTests by generator("org.jetbrains.kotlin.generators.tests.GenerateRuntimeDescriptorTestsKt")
 
 projectTest(parallel = true) {
