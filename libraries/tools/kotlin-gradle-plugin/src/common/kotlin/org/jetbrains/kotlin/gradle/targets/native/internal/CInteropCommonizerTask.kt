@@ -13,17 +13,17 @@ import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.*
 import org.gradle.process.ExecOperations
-import org.jetbrains.kotlin.commonizer.CommonizerDependency
-import org.jetbrains.kotlin.commonizer.TargetedCommonizerDependency
-import org.jetbrains.kotlin.commonizer.allLeaves
-import org.jetbrains.kotlin.compilerRunner.*
+import org.jetbrains.kotlin.commonizer.*
 import org.jetbrains.kotlin.compilerRunner.GradleCliCommonizer
 import org.jetbrains.kotlin.compilerRunner.KotlinNativeCommonizerToolRunner
+import org.jetbrains.kotlin.compilerRunner.KotlinToolRunner
 import org.jetbrains.kotlin.compilerRunner.konanHome
 import org.jetbrains.kotlin.gradle.dsl.multiplatformExtensionOrNull
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinSharedNativeCompilation
+import org.jetbrains.kotlin.gradle.plugin.mpp.isMain
 import org.jetbrains.kotlin.gradle.plugin.mpp.kotlinSourceSetsIncludingDefault
 import org.jetbrains.kotlin.gradle.plugin.sources.withDependsOnClosure
 import org.jetbrains.kotlin.gradle.targets.native.internal.CInteropCommonizerTask.CInteropGist
@@ -166,15 +166,41 @@ internal open class CInteropCommonizerTask
             settings = runnerSettings.get()
         )
 
+        val inputLibraries = cinteropsForTarget.map { it.libraryFile.get() }.filter { it.exists() }.toSet()
         GradleCliCommonizer(commonizerRunner).commonizeLibraries(
             konanHome = konanHome,
             outputTargets = group.targets,
-            inputLibraries = cinteropsForTarget.map { it.libraryFile.get() }.filter { it.exists() }.toSet(),
-            dependencyLibraries = getNativeDistributionDependencies(group),
+            inputLibraries = inputLibraries,
+            dependencyLibraries = getExternalDependencies(inputLibraries, group) + getNativeDistributionDependencies(group),
             outputDirectory = outputDirectory(group),
             logLevel = commonizerLogLevel,
             additionalSettings = additionalCommonizerSettings,
         )
+    }
+
+    private fun getExternalDependencies(cinteropLibs: Set<File>, group: CInteropCommonizerGroup): Set<CommonizerDependency> {
+        val dependencies = (group.targets + group.targets.allLeaves()).flatMap { target ->
+            getMainCompilationsForCommonizerTarget(target)
+                .flatMap { project.configurations.getByName(it.compileDependencyConfigurationName).files }
+                .filter { f -> f.exists() && cinteropLibs.none { it.absolutePath == f.absolutePath } }
+                .map { f -> TargetedCommonizerDependency(target, f) }
+        }.toSet()
+
+        return dependencies
+    }
+
+    private fun getMainCompilationsForCommonizerTarget(target: CommonizerTarget): List<KotlinCompilation<*>> {
+        val multiplatformExtension = project.multiplatformExtensionOrNull ?: return emptyList()
+        return when (target) {
+            is LeafCommonizerTarget -> multiplatformExtension.targets
+                .filter { it is KotlinNativeTarget && it.konanTarget == target.konanTarget }
+                .flatMap { it.compilations }
+                .filter { it.isMain() }
+
+            is SharedCommonizerTarget -> multiplatformExtension.targets
+                .flatMap { it.compilations }
+                .filter { it is KotlinSharedNativeCompilation && it.isMain() && project.getCommonizerTarget(it) == target }
+        }
     }
 
     private fun getNativeDistributionDependencies(group: CInteropCommonizerGroup): Set<CommonizerDependency> {
